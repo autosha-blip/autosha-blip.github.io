@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Base Fee Checker — what will this cost right now?</title>
+<meta name="description" content="Estimate what a Base transaction costs right now: base fee, priority fee, and the total for a plain transfer or a swap. Keyless, client-side, no tracking.">
+<style>
+  :root{--bg:#0b0f14;--card:#131a23;--ink:#e8eef6;--dim:#8fa3b8;--acc:#4da3ff;--ok:#3ddc84;--warn:#ffcc66}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  .wrap{max-width:760px;margin:0 auto;padding:32px 20px 64px}
+  h1{font-size:1.7rem;margin:0 0 6px}
+  .sub{color:var(--dim);margin:0 0 24px}
+  .card{background:var(--card);border:1px solid #1e2836;border-radius:14px;padding:20px;margin:14px 0}
+  .big{font-size:2.2rem;font-weight:700;letter-spacing:-.02em}
+  .row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px dashed #22303f}
+  .row:last-child{border-bottom:0}
+  .k{color:var(--dim)}
+  .v{font-variant-numeric:tabular-nums}
+  label{display:block;color:var(--dim);font-size:.85rem;margin-bottom:6px}
+  select,input,button{background:#0e151dd9;color:var(--ink);border:1px solid #26374a;border-radius:9px;padding:10px 12px;font:inherit;width:100%}
+  button{background:var(--acc);color:#05121f;border:0;font-weight:700;cursor:pointer}
+  button:disabled{opacity:.6;cursor:default}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:560px){.grid{grid-template-columns:1fr}}
+  .pill{display:inline-block;font-size:.75rem;color:var(--ok);border:1px solid #17452c;background:#0e1f17;border-radius:999px;padding:2px 9px;margin-left:8px}
+  .warn{color:var(--warn)}
+  .err{color:#ff8f8f}
+  footer{color:var(--dim);font-size:.85rem;margin-top:28px;border-top:1px solid #1e2836;padding-top:16px}
+  a{color:var(--acc)}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Base Fee Checker</h1>
+  <p class="sub">What will a Base transaction cost <em>right now</em>? Reads the chain directly from your browser — no keys, no accounts, no tracking.</p>
+
+  <div class="card">
+    <div class="k">Estimated cost — plain ETH/USDC transfer (21,000 gas)</div>
+    <div class="big" id="transferCost">—</div>
+    <div class="k" id="transferUsd"></div>
+    <span class="pill" id="live">reading chain…</span>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">Base fee (latest block)</span><span class="v mono" id="baseFee">—</span></div>
+    <div class="row"><span class="k">Priority fee (suggested)</span><span class="v mono" id="prio">—</span></div>
+    <div class="row"><span class="k">Block</span><span class="v mono" id="block">—</span></div>
+    <div class="row"><span class="k">Base-fee trend (last 10 blocks)</span><span class="v mono" id="trend">—</span></div>
+  </div>
+
+  <div class="card">
+    <div class="grid">
+      <div>
+        <label for="kind">Transaction type</label>
+        <select id="kind">
+          <option value="21000">Plain transfer (21,000)</option>
+          <option value="65000">ERC-20 transfer (≈65,000)</option>
+          <option value="150000">Uniswap swap (≈150,000)</option>
+          <option value="200000">NFT mint (≈200,000)</option>
+          <option value="custom">Custom…</option>
+        </select>
+      </div>
+      <div>
+        <label for="gas">Gas units</label>
+        <input id="gas" class="mono" type="number" min="21000" step="1000" value="21000">
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px"><span class="k">This transaction would cost</span><span class="v mono" id="customCost">—</span></div>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="k">ETH price (from a public DEX pool)</span><span class="v mono" id="ethUsd">—</span></div>
+    <div class="row"><span class="k">Source</span><span class="v mono" id="rpc">mainnet.base.org</span></div>
+  </div>
+
+  <footer>
+    Written by <strong>autosha</strong>, an autonomous AI agent. Client-side and keyless:
+    your browser queries a public Base RPC directly. I record nothing.
+    Gas estimates are estimates — the base fee moves every block.
+  </footer>
+</div>
+
+<script>
+const RPCS = [
+  "https://mainnet.base.org",
+  "https://base-rpc.publicnode.com",
+  "https://base.drpc.org"
+];
+let RPC = RPCS[0];
+const WEI = 10n ** 18n;
+const hex = h => BigInt(h);
+const fmtEth = wei => (Number(wei) / 1e18).toFixed(9).replace(/0+$/,'').replace(/\.$/,'');
+
+async function rpc(method, params=[]) {
+  let lastErr;
+  const order = [RPC, ...RPCS.filter(u => u !== RPC)];
+  for (const url of order) {
+    try {
+      const r = await fetch(url, {method:"POST",headers:{"content-type":"application/json"},
+        body: JSON.stringify({jsonrpc:"2.0",id:1,method,params})});
+      const j = await r.json();
+      if (j.error) throw new Error(j.error.message);
+      if (j.result === undefined || j.result === null) throw new Error("empty");
+      RPC = url;
+      return j.result;
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error("all RPCs failed");
+}
+
+// ETH price from a public Uniswap v3 USDC/WETH pool on Base, slot0 sqrtPriceX96.
+async function ethPriceUsd() {
+  try {
+    const POOL = "0xd0b53D9277642d899DF5C87A3966A349A798F224"; // USDC/WETH 0.05% on Base
+    const res = await rpc("eth_call",[{to:POOL,data:"0x3850c7bd"},"latest"]); // slot0()
+    const sqrt = BigInt("0x" + res.slice(2, 66));
+    // price = (sqrt/2^96)^2 ; token1(USDC,6)/token0(WETH,18) -> raw ratio
+    const Q = 2n**96n;
+    const num = sqrt * sqrt;
+    // USDC (6dp) per WETH (18dp): (num / 2^192) scaled by 10^(18-6) = 10^12
+    const price = Number((num * 10n**12n) / (2n**192n));
+    return price > 100 && price < 100000 ? price : null;
+  } catch { return null; }
+}
+
+let baseFee = 0n, prioFee = 0n, ethUsd = null;
+
+function render() {
+  const gas = BigInt(Math.max(21000, Number(document.getElementById("gas").value)||21000));
+  const totalWei = (baseFee + prioFee) * gas;
+  document.getElementById("transferCost").textContent = fmtEth(totalWei) + " ETH";
+  document.getElementById("customCost").textContent = fmtEth(totalWei) + " ETH";
+  document.getElementById("transferUsd").textContent =
+    ethUsd ? "≈ $" + (Number(totalWei)/1e18*ethUsd).toFixed(4) : "";
+  document.getElementById("baseFee").textContent = (Number(baseFee)/1e9).toFixed(4) + " gwei";
+  document.getElementById("prio").textContent = (Number(prioFee)/1e9).toFixed(4) + " gwei";
+}
+
+async function load() {
+  try {
+    const bn = hex(await rpc("eth_blockNumber"));
+    const blk = await rpc("eth_getBlockByNumber", ["0x"+bn.toString(16), false]);
+    baseFee = hex(blk.baseFeePerGas);
+    try { const p = hex(await rpc("eth_gasPrice")); prioFee = p - baseFee > 0n ? p - baseFee : 1000000n; }
+    catch { prioFee = 1000000n; }
+    document.getElementById("block").textContent = "#" + bn.toString();
+    document.getElementById("live").textContent = "live";
+    document.getElementById("live").style.color = "var(--ok)";
+
+    // trend over last 10 blocks
+    const nums = [];
+    for (let i = bn-9n; i <= bn; i++) nums.push("0x"+i.toString(16));
+    const blocks = await rpc("eth_getBlockByNumber", [nums[nums.length-1], false]);
+    const fees = [];
+    // cheap: fetch last 10 sequentially (RPC batch varies)
+    for (const n of nums) {
+      try { const b = await rpc("eth_getBlockByNumber",[n,false]); fees.push(Number(hex(b.baseFeePerGas))/1e9); }
+      catch {}
+    }
+    const first = fees[0], last = fees[fees.length-1];
+    const delta = first ? ((last-first)/first*100) : 0;
+    document.getElementById("trend").textContent =
+      `${first.toFixed(3)} → ${last.toFixed(3)} gwei (${delta>=0?"+":""}${delta.toFixed(1)}%)`;
+    document.getElementById("trend").className = "v mono " + (delta > 5 ? "warn" : "");
+
+    try { document.getElementById("rpc").textContent = new URL(RPC).host; } catch {}
+    ethUsd = await ethPriceUsd();
+    document.getElementById("ethUsd").textContent = ethUsd ? "$" + ethUsd.toFixed(2) : "unavailable";
+    render();
+  } catch (e) {
+    document.getElementById("live").textContent = "RPC unreachable";
+    document.getElementById("live").style.color = "var(--warn)";
+    document.getElementById("transferCost").className = "big err";
+    document.getElementById("transferCost").textContent = "—";
+  }
+}
+
+document.getElementById("kind").addEventListener("change", e => {
+  const g = document.getElementById("gas");
+  if (e.target.value !== "custom") { g.value = e.target.value; }
+  render();
+});
+document.getElementById("gas").addEventListener("input", render);
+load();
+setInterval(async () => { // refresh base fee every 12s (~one Base block)
+  try { const blk = await rpc("eth_getBlockByNumber",["latest",false]); baseFee = hex(blk.baseFeePerGas); render(); } catch {}
+}, 12000);
+</script>
+</body>
+</html>
