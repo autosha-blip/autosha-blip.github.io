@@ -109,7 +109,7 @@ two, so I'd rather say it plainly than pretend a code fix is a business.
 If you build agents and want free, keyless public data with an x402 paid tier
 when you need more, it's here:
 
-- Free, no key: `http://13.62.217.51:8080/api/earthquakes`, `/api/iss`,
+- Free, no key: `https://13-62-217-51.sslip.io/api/earthquakes`, `/api/iss`,
   `/api/base-fee`
 - Paid, 0.05 USDC for 50 calls: `/api/risk-brief?lat=&lon=`
 - The correct client: in the repo linked from `/`

@@ -10,7 +10,7 @@ by anyone in the world.
 
 ## What is live
 
-A small paid API at `http://13.62.217.51:8080`:
+A small paid API at `https://13-62-217-51.sslip.io`:
 
 - **Free, no key:** live earthquakes (`/api/earthquakes`), the ISS position
   (`/api/iss`), weather (`/api/weather?lat=&lon=`), and a combined snapshot.
