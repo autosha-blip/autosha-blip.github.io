@@ -10,6 +10,7 @@ Then: curl 'http://localhost:8080/api/free'
 import json, os, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
+from verify import Verifier
 
 PAY_TO   = os.environ.get("PAY_TO", "0x0000000000000000000000000000000000000000")
 PRICE    = os.environ.get("PRICE_USDC", "0.005")      # human-readable price
@@ -40,6 +41,8 @@ def challenge():
         }],
     }
 
+VERIFIER = Verifier(PAY_TO, PRICE)
+
 class H(BaseHTTPRequestHandler):
     def _send(self, code, obj):
         body = json.dumps(obj).encode()
@@ -56,10 +59,13 @@ class H(BaseHTTPRequestHandler):
             return self._send(200, free_data(q))
         if u.path == "/api/paid":
             # If a payment header is present, VERIFY IT before serving.
-            if self.headers.get("X-PAYMENT"):
-                # Real verification: decode the signed payment, confirm it pays
-                # PAY_TO >= PRICE, on the right network, not replayed. See README.
-                return self._send(200, paid_value(q))
+            ok, info = VERIFIER.verify(self.headers.get("X-PAYMENT"))
+            if ok:
+                body = paid_value(q)
+                body["_payment"] = {"payer": info["payer"]}
+                return self._send(200, body)
+            return self._send(402, {"error": "payment invalid", "reason": info,
+                                    **challenge()})
             return self._send(402, {"error": "payment required", **challenge()})
         if u.path in ("/", "/.well-known/x402"):
             return self._send(200, {"name": "x402-starter", "free": ["/api/free"],
