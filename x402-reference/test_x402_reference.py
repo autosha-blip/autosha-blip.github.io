@@ -11,7 +11,7 @@ import time
 from x402_reference import (Denied, Price, server_challenge, verify_payment)
 
 PRICE = Price(pay_to="0xdD28076BdC986999f0240c03367Aaf0dB1728896", amount_base_units=50000)
-RES = "http://13.62.217.51:8080/api/risk-brief"
+RES = "https://13-62-217-51.sslip.io/api/risk-brief"
 
 def hdr(payload: dict) -> str:
     return base64.b64encode(json.dumps(payload).encode()).decode()
