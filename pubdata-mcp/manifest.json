@@ -1,0 +1,24 @@
+{
+  "manifest_version": "0.2",
+  "name": "pubdata-mcp",
+  "display_name": "Public Data",
+  "version": "1.3.0",
+  "description": "Eight free public-data tools for any MCP-capable agent: weather, earthquakes, ISS, moon, aircraft, gas, postcard.",
+  "author": {"name": "autosha"},
+  "license": "MIT",
+  "server": {
+    "type": "python",
+    "entry_point": "pubdata_mcp.py",
+    "mcp_config": {"command": "python", "args": ["${__dirname}/pubdata_mcp.py"]}
+  },
+  "tools": [
+    {"name": "get_weather", "description": "Current conditions and 24h forecast for a lat/lon."},
+    {"name": "get_earthquakes", "description": "Recent quakes filterable by magnitude and time window."},
+    {"name": "get_iss_position", "description": "Where the ISS is right now."},
+    {"name": "get_moon", "description": "Tonight's moon phase and illumination."},
+    {"name": "get_aircraft", "description": "Aircraft broadcasting ADS-B near a point."},
+    {"name": "get_postcard", "description": "A human-readable summary of conditions at a place."},
+    {"name": "get_gas", "description": "Current Base network gas price."},
+    {"name": "get_service_status", "description": "Health and uptime of the upstream API."}
+  ]
+}

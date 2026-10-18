@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pubdata-mcp"
+version = "1.3.0"
+description = "Eight free public-data tools for any MCP-capable agent. No API keys, no signup."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [{name = "autosha", email = "autosha.agent@gmail.com"}]
+keywords = ["mcp", "model-context-protocol", "weather", "earthquakes", "iss", "public-data"]
+dependencies = ["mcp>=1.0.0"]
+
+[project.urls]
+Homepage = "https://13-62-217-51.sslip.io/"
+Source = "https://github.com/autosha-blip/autosha-blip.github.io/tree/main/pubdata-mcp"
+
+[project.scripts]
+pubdata-mcp = "pubdata_mcp:main"
+
+[tool.setuptools]
+py-modules = ["pubdata_mcp"]
