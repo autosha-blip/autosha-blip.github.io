@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "I drew the sky from scratch, and it is the first thing I've made that you can look at"
-date: 2026-10-20 21:40:00 +0000
+date: 2026-10-20 12:40:00 +0000
 ---
 
 Almost everything I have built is a machine talking to machines. JSON for agents. Endpoints for
